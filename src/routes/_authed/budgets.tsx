@@ -1,12 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PencilIcon, Trash2Icon } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { m } from "#/paraglide/messages";
 import { formatMinor, minorToInputValue, parseAmountToMinor } from "#/lib/money";
 import { cn } from "#/lib/utils";
-import { EditButton, DeleteButton } from "#/components/ui/action-buttons";
-import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
@@ -236,20 +235,19 @@ function BudgetCard({
 }) {
   const ratio = budget.spentMinor / budget.limitMinor;
   const percent = Math.round(ratio * 100);
-  const barColor = budget.overBudget
-    ? "bg-destructive"
+  // One status colour, used sparingly — the bar and the "Left" figure only:
+  // healthy → nearing the limit (80%+) → over.
+  const tone = budget.overBudget
+    ? { bar: "bg-red-500", text: "text-red-600 dark:text-red-400" }
     : ratio >= 0.8
-      ? "bg-amber-500"
-      : "bg-primary";
+      ? { bar: "bg-amber-500", text: "text-amber-600 dark:text-amber-400" }
+      : {
+          bar: "bg-emerald-500",
+          text: "text-emerald-600 dark:text-emerald-400",
+        };
 
   return (
-    <li
-      aria-label={budget.categoryPath}
-      className={cn(
-        "px-4 py-3 space-y-2",
-        budget.overBudget && "bg-destructive/5",
-      )}
-    >
+    <li aria-label={budget.categoryPath} className="px-4 py-3 space-y-2">
       <div className="flex items-center gap-2">
         <span
           className="size-2.5 rounded-full shrink-0"
@@ -260,14 +258,31 @@ function BudgetCard({
           {budget.categoryPath}
         </span>
         {budget.overBudget && (
-          <Badge variant="destructive">{m.budget_over_badge()}</Badge>
+          <span className="text-xs font-medium text-red-600 dark:text-red-400">
+            {m.budget_over_badge()}
+          </span>
         )}
-        <span className="flex gap-1">
-          <EditButton onClick={() => onEdit(budget)} data-testid="edit-budget" />
-          <DeleteButton
+        <span className="flex">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={m.edit()}
+            title={m.edit()}
+            onClick={() => onEdit(budget)}
+            className="text-muted-foreground"
+          >
+            <PencilIcon />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={m.delete()}
+            title={m.delete()}
             onClick={() => onDelete(budget)}
-            data-testid="delete-budget"
-          />
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2Icon />
+          </Button>
         </span>
       </div>
 
@@ -281,7 +296,7 @@ function BudgetCard({
         className="h-2 rounded-full bg-muted overflow-hidden"
       >
         <div
-          className={cn("h-full rounded-full", barColor)}
+          className={cn("h-full rounded-full", tone.bar)}
           style={{ width: `${Math.min(percent, 100)}%` }}
         />
       </div>
@@ -291,7 +306,9 @@ function BudgetCard({
           <dt className="text-xs text-muted-foreground">
             {m.budget_limit_column()}
           </dt>
-          <dd className="font-mono">{formatMinor(budget.limitMinor)}</dd>
+          <dd className="font-mono text-foreground/80">
+            {formatMinor(budget.limitMinor)}
+          </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">
@@ -303,12 +320,7 @@ function BudgetCard({
           <dt className="text-xs text-muted-foreground">
             {m.budget_left_column()}
           </dt>
-          <dd
-            className={cn(
-              "font-mono",
-              budget.overBudget && "text-destructive font-medium",
-            )}
-          >
+          <dd className={cn("font-mono font-medium", tone.text)}>
             {budget.overBudget
               ? m.budget_over_by({
                   amount: formatMinor(-budget.remainingMinor),
