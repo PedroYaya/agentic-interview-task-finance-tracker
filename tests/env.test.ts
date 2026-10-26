@@ -163,6 +163,7 @@ describe("env validation", () => {
     expect(defaults.billing.enabled).toBe(false);
     expect(defaults.billing.proScansPerMonth).toBe(200);
     expect(defaults.billing.freeMaxAccounts).toBe(2);
+    expect(defaults.billing.freeMaxBudgets).toBe(3);
 
     // all three Stripe vars enable billing
     const enabled = validateEnv({
@@ -189,6 +190,10 @@ describe("env validation", () => {
     );
     expect(() => validateEnv({ BILLING_FREE_MAX_ACCOUNTS: "0" })).toThrow(
       /BILLING_FREE_MAX_ACCOUNTS/,
+    );
+    expect(validateEnv({ BILLING_FREE_MAX_BUDGETS: "5" }).billing.freeMaxBudgets).toBe(5);
+    expect(() => validateEnv({ BILLING_FREE_MAX_BUDGETS: "0" })).toThrow(
+      /BILLING_FREE_MAX_BUDGETS/,
     );
   });
 });

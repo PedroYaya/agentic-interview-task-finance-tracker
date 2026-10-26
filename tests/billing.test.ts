@@ -60,11 +60,13 @@ describe("billing entitlements and webhook processing", () => {
     expect(entitlementsForPlan("free")).toEqual({
       plan: "free",
       maxAccounts: env.billing.freeMaxAccounts,
+      maxBudgets: env.billing.freeMaxBudgets,
       scansPerMonth: env.ai.freeScansPerMonth,
     });
     expect(entitlementsForPlan("pro")).toEqual({
       plan: "pro",
       maxAccounts: null,
+      maxBudgets: null,
       scansPerMonth: env.billing.proScansPerMonth,
     });
   });

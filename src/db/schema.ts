@@ -9,6 +9,8 @@ import {
   doublePrecision,
   serial,
   index,
+  primaryKey,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const auth_token_type = pgEnum("auth_token_type", [
@@ -206,6 +208,54 @@ export const categorization_rules = pgTable(
   (t) => [
     index("categorization_rules_user_priority_idx").on(t.user_id, t.priority),
   ],
+);
+
+// Monthly spending limit per category. Spending is never stored: it is
+// computed live from transactions for the current calendar month (UTC), so
+// budgets "reset" simply because the month window moves.
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: text("id").primaryKey(),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    category_id: text("category_id")
+      .notNull()
+      .references(() => categories.id),
+    // Integer minor units (grosze/cents) — never store money as floats.
+    limit_minor: integer("limit_minor").notNull(),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  // One budget per category.
+  (t) => [uniqueIndex("budgets_category_idx").on(t.category_id)],
+);
+
+// Over-budget email ledger: at most one row per budget per month. The row is
+// inserted (ON CONFLICT DO NOTHING) before sending, so concurrent checks
+// can't double-send, and removed again if the send fails so a later check
+// retries.
+export const budget_alerts = pgTable(
+  "budget_alerts",
+  {
+    budget_id: text("budget_id")
+      .notNull()
+      .references(() => budgets.id),
+    user_id: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    // First day of the alerted calendar month (UTC), e.g. "2026-10-01".
+    month: date("month", { mode: "string" }).notNull(),
+    created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.budget_id, t.month] })],
 );
 
 // One row per AI call (including fake-mode and failed calls) — the raw input

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "#/db";
+import { checkBudgetAlerts } from "#/server/budgets.server";
 import { isEmailVerified, requireUserId } from "#/server/session";
 import { extractReceiptItems, type ReceiptExtraction } from "#/server/ai";
 import {
@@ -567,6 +568,8 @@ export const saveReceiptAndLink = createServerFn({ method: "POST" })
       }
       transaction = transaction[0];
     }
+
+    await checkBudgetAlerts(userId);
 
     return {
       success: true,

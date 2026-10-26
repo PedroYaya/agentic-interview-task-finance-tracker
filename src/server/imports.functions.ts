@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "#/db";
+import { checkBudgetAlerts } from "#/server/budgets.server";
 import { isEmailVerified, requireUserId } from "#/server/session";
 import { categorizeDescription, isAIVisible } from "#/server/ai";
 import { checkSpendCap } from "#/server/ai-usage.server";
@@ -1076,6 +1077,7 @@ async function* streamConfirmImport(
       row_count: insertRows.length,
     });
     await db.insert(schema.transactions).values(insertRows);
+    await checkBudgetAlerts(userId);
 
     if (aiRulesToCreate.length > 0) {
       const aiRulesInsert = aiRulesToCreate.map((rule) => ({
