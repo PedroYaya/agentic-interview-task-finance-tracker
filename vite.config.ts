@@ -11,6 +11,14 @@ import tailwindcss from "@tailwindcss/vite";
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  server: {
+    // Vite 8 auto-enables console forwarding when it detects an AI coding
+    // agent (e.g. CLAUDECODE=1). While the dev server is down, its sends
+    // reject unhandled and it forwards that rejection again — an infinite
+    // loop of "send was called before connect". The devtools plugin already
+    // pipes browser logs to the terminal.
+    forwardConsole: false,
+  },
   plugins: [
     devtools(),
     paraglideVitePlugin({
