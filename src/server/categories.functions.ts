@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq, and, asc, count, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "#/db";
+import { checkBudgetAlerts } from "#/server/budgets.server";
 import { requireUserId } from "#/server/session";
 
 
@@ -305,10 +306,36 @@ export const deleteCategory = createServerFn({ method: "POST" })
       .delete(schema.categorization_rules)
       .where(inArray(schema.categorization_rules.category_id, allIdsToDelete));
 
-    // Delete all descendant categories first, then the target
-    await db
-      .delete(schema.categories)
-      .where(inArray(schema.categories.id, allIdsToDelete));
+    // Budgets on any deleted category go with it (alerts first — FK), in the
+    // same transaction as the categories themselves.
+    await db.transaction(async (tx) => {
+      const budgetIds = tx
+        .select({ id: schema.budgets.id })
+        .from(schema.budgets)
+        .where(
+          and(
+            inArray(schema.budgets.category_id, allIdsToDelete),
+            eq(schema.budgets.user_id, userId),
+          ),
+        );
+      await tx
+        .delete(schema.budget_alerts)
+        .where(inArray(schema.budget_alerts.budget_id, budgetIds));
+      await tx
+        .delete(schema.budgets)
+        .where(
+          and(
+            inArray(schema.budgets.category_id, allIdsToDelete),
+            eq(schema.budgets.user_id, userId),
+          ),
+        );
+      await tx
+        .delete(schema.categories)
+        .where(inArray(schema.categories.id, allIdsToDelete));
+    });
+
+    // Reassigned spending may push the target category's budget over.
+    if (data.reassignToCategoryId) await checkBudgetAlerts(userId);
 
     return { success: true };
   });
